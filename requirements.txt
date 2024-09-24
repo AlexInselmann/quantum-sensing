@@ -2,3 +2,7 @@ qutip
 numpy
 matplotlib
 scipy
+ipython
+ipykernel
+seaborn
+torch
