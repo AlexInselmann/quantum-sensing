@@ -7,7 +7,7 @@ Should do
 - [ ] make NN baseline 
 
 Could do 
-- [ ] computationally optimize the simulated data in von neumann jypiter
+- [x] computationally optimize the simulated data in von neumann jypiter
 
 Questions
 - [ ] What kind of data will we use, and what should we predict?
