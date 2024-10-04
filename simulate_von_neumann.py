@@ -22,8 +22,6 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
 
 
 
-
-
 def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
@@ -40,19 +38,6 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
     X: array with the particle position measurement at different time steps - measurement record.
     a: array with the particle state coefficient plus at different time steps.
     b: array with the particle state coefficient minus at different time steps.
-
-        while sum(T)<=tstop:
-        a = np.random.uniform(0,1)
-        if 0<a<r(N[-1])/K(N[-1]):
-            tau = np.random.exponential(1/r(N[-1])) #Sample of time intervals for constant rate
-            N.append(N[-1]-1)
-        else:
-            tau = np.random.exponential(1/g(N[-1]))
-            N.append(N[-1]+1)
-        T.append(tau)
-        #if len(T)==100:
-        #    break
-    return T, N
 
     '''
 
