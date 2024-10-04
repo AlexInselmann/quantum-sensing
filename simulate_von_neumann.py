@@ -21,7 +21,10 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
     return b * phi(x + g) / np.sqrt(p(x, g, a, b))
 
 
-def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None):#
+
+
+
+def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
@@ -31,11 +34,25 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None):#
     g: interaction strength
     a0: initial state coefficient plus
     b0: initial state coefficient minus
+    r: rate for bit flip 
 
     Output:
     X: array with the particle position measurement at different time steps - measurement record.
     a: array with the particle state coefficient plus at different time steps.
     b: array with the particle state coefficient minus at different time steps.
+
+        while sum(T)<=tstop:
+        a = np.random.uniform(0,1)
+        if 0<a<r(N[-1])/K(N[-1]):
+            tau = np.random.exponential(1/r(N[-1])) #Sample of time intervals for constant rate
+            N.append(N[-1]-1)
+        else:
+            tau = np.random.exponential(1/g(N[-1]))
+            N.append(N[-1]+1)
+        T.append(tau)
+        #if len(T)==100:
+        #    break
+    return T, N
 
     '''
 
@@ -56,13 +73,17 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None):#
     b[:,0] = np.repeat(b0,N_sim)
 
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
-    for i in range(N):
-        
-        P = p(X_span,g,a[:,i],b[:,i])
+    for i in range(N):#creating N_sim number of quantum trajectory in parallel
+        P = p(X_span,g,a[:,i],b[:,i]) 
         P = P/P.sum(axis=1)[:,None]
         X[:, i] = np.array([np.random.choice(X_span,p=P[i,:]) for i in range(N_sim)])#Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
-        a[:,i+1] = cplus_VN(X[:,i],g, a[:,i],b[:,i]) #Depends on initial state but next. Can it be complex from time evolution)?
-        b[:,i+1] = cminus_VN(X[:,i],g,a[:,i],b[:,i])
+        k = np.random.uniform(0,1) 
+        if 0<k<r*delta_t:#bitflip!
+            a[:,i+1] =  cminus_VN(X[:,i],g,a[:,i],b[:,i])
+            b[:,i+1] = cplus_VN(X[:,i],g, a[:,i],b[:,i]) #Depends on initial state but next. Can it be complex from time evolution)?
+        else:
+            a[:,i+1] = cplus_VN(X[:,i],g, a[:,i],b[:,i]) #Depends on initial state but next. Can it be complex from time evolution)?
+            b[:,i+1] = cminus_VN(X[:,i],g,a[:,i],b[:,i])
     return X,a,b
 
 
