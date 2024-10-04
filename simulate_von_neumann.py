@@ -64,6 +64,7 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
         
     
     X_span = np.linspace(-10,10,1000)
+    
     X = np.zeros((N_sim, N)) #spot to plug in new position, one less measurement than states (starts and ends with states
     a = np.zeros((N_sim, N+1)) #coeficitent in plus state
     b = np.zeros((N_sim, N+1)) #coeficitent in minus state
