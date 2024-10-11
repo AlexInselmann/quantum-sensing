@@ -22,7 +22,7 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
 
 
 
-def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
+def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1, seed = 42):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
@@ -40,15 +40,19 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1):#
     b: array with the particle state coefficient minus at different time steps.
 
     '''
+    np.random.seed(seed) #seed for reproducibility
 
     if b0 is None:
         b0 = np.sqrt(1 - a0**2)
         
-    
     assert a0**2 + b0**2 == 1, 'Initial state coefficients do not sum to 1'
+
+    if N_sim == N: # dimensions course problems in vectorization if these are equal
+        print('N_sim and N are equal, changing N_sim to N+1')
+        N_sim += 1
         
     
-    X_span = np.linspace(-10,10,1000)
+    X_span = np.linspace(-10,10,1000) if N_sim != 1000 else np.linspace(-10,10,1001)
     
     X = np.zeros((N_sim, N)) #spot to plug in new position, one less measurement than states (starts and ends with states
     a = np.zeros((N_sim, N+1)) #coeficitent in plus state
