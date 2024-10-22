@@ -7,3 +7,4 @@ ipykernel
 seaborn
 torch
 torchvision
+tqdm

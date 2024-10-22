@@ -4,3 +4,6 @@
 # data
 litterature/
 figures/
+
+# pycache
+__pycache__/
