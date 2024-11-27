@@ -109,3 +109,6 @@ def vgg16bn(**kwargs):
 def vgg19bn(**kwargs):
     model = VGG(make_layers(cfg['E'], batch_norm=True), arch='vgg19bn', **kwargs)
     return model
+
+if __name__ == '__main__':
+    print('testing models')
