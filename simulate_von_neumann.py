@@ -62,7 +62,7 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1, seed = None
     #Initial conditions
     a[:,0] = np.repeat(a0,N_sim)
     b[:,0] = np.repeat(b0,N_sim)
-
+    
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
     for i in range(N):#creating N_sim number of quantum trajectory in parallel
         P = p(X_span,g,a[:,i],b[:,i]) 
@@ -75,6 +75,7 @@ def Xeuler_sim(N_sim, N, g, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=1, seed = None
         else:
             a[:,i+1] = cplus_VN(X[:,i],g, a[:,i],b[:,i]) #Depends on initial state but next. Can it be complex from time evolution)?
             b[:,i+1] = cminus_VN(X[:,i],g,a[:,i],b[:,i])
+   
     return X,a,b
 
 

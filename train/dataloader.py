@@ -29,7 +29,10 @@ def create_datasets_sim(N_data: int, data_split: float, N: int, g: float, a0: fl
     assert data_split <= 1 and data_split > 0, 'data_split must be between 0 and 1'
 
 
-    X, _, _ = Xeuler_sim(N_data, N, g, a0, b0)
+    X, a, b = Xeuler_sim(N_data, N, g, a0, b0)
+    a = torch.tensor(a).float()
+    b = torch.tensor(b).float()
+
     X = torch.tensor(X).float()
     X = X.unsqueeze(1)
     
@@ -46,20 +49,32 @@ def create_datasets_sim(N_data: int, data_split: float, N: int, g: float, a0: fl
         idx_val = idx[split_idx:]
     
         # create dataset
-        train_dataset = torch.utils.data.TensorDataset(X[idx_train], label[idx_train])
-        val_dataset = torch.utils.data.TensorDataset(X[idx_val], label[idx_val])
+        train_dataset = torch.utils.data.TensorDataset(X[idx_train], label[idx_train], a[idx_train], b[idx_train])
+        val_dataset = torch.utils.data.TensorDataset(X[idx_val], label[idx_val], a[idx_val], b[idx_val])
 
         return train_dataset, val_dataset
 
     else: # test data
-        test_dataset = torch.utils.data.TensorDataset(X, label)
+
+        test_dataset = torch.utils.data.TensorDataset(X, label, a,b)
         return test_dataset
     
     
     
 
+if __name__ == '__main__':
+
+    dataset = create_datasets_sim(1000, 1, 100, 0.1)
+
+    # check shapes
+    sample_X, sample_y, sample_a, sample_b = dataset[0]
+    print("X shape:", sample_X.shape)
+    print("y shape:", sample_y.shape)
+    print("a shape:", sample_a.shape)
+    print("b shape:", sample_b.shape)
 
 
+  
 
 
 

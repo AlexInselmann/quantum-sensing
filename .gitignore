@@ -1,9 +1,19 @@
 # enviroment
 .env/
+.qs_env/
+.venv/
 
 # data
 litterature/
 figures/
 
-# pycache
+# all pycache
 __pycache__/
+train/__pycache__/
+
+
+# figures
+figures/
+
+# DS_Store
+.DS_Store

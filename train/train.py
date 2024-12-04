@@ -24,7 +24,7 @@ def train_model(model, train_loader, val_loader, m, epochs, loss_fn, optimizer, 
         model.train()
         train_loss = 0
         train_acc = 0
-        for X, y in train_loader:
+        for X, y, _,_  in train_loader:
             X, y = X.to(device), y.to(device)
             X = X[:,:, :m] # keep first m measurements
 
@@ -45,7 +45,7 @@ def train_model(model, train_loader, val_loader, m, epochs, loss_fn, optimizer, 
         val_loss = 0
         val_acc = 0
         with torch.no_grad():
-            for X, y in val_loader:
+            for X, y,_,_ in val_loader:
                 X, y = X.to(device), y.to(device)
                 X = X[:,:, :m]
 
