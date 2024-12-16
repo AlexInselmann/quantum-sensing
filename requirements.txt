@@ -8,3 +8,4 @@ seaborn
 torch
 torchvision
 tqdm
+autograd

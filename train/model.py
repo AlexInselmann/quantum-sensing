@@ -37,8 +37,11 @@ class VGG(nn.Module):
         self.arch = arch
         self.features = features
         self.pool = nn.AdaptiveAvgPool1d(4)
+
+        num_param = 256 * 4 if arch == 'vggsmall' else 512 * 4
+       
         self.classifier = nn.Sequential(
-            nn.Linear(256 * 4, 512), # if you change to another VGG, change 256 to 512
+            nn.Linear(num_param, 512), # if you change to another VGG, change 256 to 512
             nn.ReLU(True),
             #nn.Dropout(),
             nn.Linear(512, 512),
@@ -98,6 +101,10 @@ def vggSmall(**kwargs):
     model = VGG(make_layers(cfg['small']), arch='vggsmall', **kwargs)
     return model
 
+def vgg11(**kwargs):
+    model = VGG(make_layers(cfg['A']), arch='vgg11', **kwargs)
+    return model
+
 def vgg13bn(**kwargs):
     model = VGG(make_layers(cfg['B'], batch_norm=True), arch='vgg13bn', **kwargs)
     return model
@@ -109,3 +116,6 @@ def vgg16bn(**kwargs):
 def vgg19bn(**kwargs):
     model = VGG(make_layers(cfg['E'], batch_norm=True), arch='vgg19bn', **kwargs)
     return model
+
+if __name__ == '__main__':
+    print('testing models')
