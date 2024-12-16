@@ -1,7 +1,5 @@
 # enviroment
-.env/
-.qs_env/
-.venv/
+.env_qs/
 
 # data
 litterature/
