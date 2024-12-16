@@ -60,42 +60,65 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
         N_sim += 1
     
     X_span = np.linspace(-10,10,1000) if N_sim != 1000 else np.linspace(-10,10,1001)
-    t_m = []
+    # create dictionaries in list to store the measurements
+    measurements = [{'X':[],'t':[]} for _ in range(N_sim)]
 
-    X = np.zeros((N_sim, N)) #spot to plug in new position, one less measurement than states (starts and ends with states
+    
+    #X = np.zeros((N_sim, N)) #spot to plug in new position, one less measurement than states (starts and ends with states
     a = np.zeros((N_sim, N+1),dtype=np.complex64) #coeficitent in plus state
     b = np.zeros((N_sim, N+1),dtype=np.complex64) #coeficitent in minus state
-    m_error = np.zeros((N_sim, N+1)) #Keep track when there is not performed a measurement
+    #m_error = np.zeros((N_sim, N+1)) #Keep track when there is not performed a measurement
 
     #Initial conditions
     a[:,0] = np.repeat(a0,N_sim)
     b[:,0] = np.repeat(b0,N_sim)
-    m_error[:,0] = np.repeat(0,N_sim) #Times for trajectory n to not do a measurement. 
+    #m_error[:,0] = np.repeat(0,N_sim) #Times for trajectory n to not do a measurement. 
     
-
+    p_succes = r*delta_t
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
     for i in range(N):#creating N_sim number of quantum trajectory in parallel 
         k = np.random.uniform(0,1, size=N_sim) 
         #Include sucess rate measurement or not! Remove measurement vs remove measurement record
-        if k<r*delta_t:#Measurement is done
+        
+        if any(k<p_succes):#Measurement is done
+            # Keep idx of those simulations that did a measurement
+            idx_m = np.where(k<p_succes)[0] #Index of measurements
+            idx_nm = np.where(k>=p_succes)[0] #Index of no measurements
+
             #Measure meter at time t_m
             P = p(X_span,g,a[:,i],b[:,i]) 
             P = P/P.sum(axis=1)[:,None]
-            X[:, i] = np.array([np.random.choice(X_span,p=P[i,:]) for i in range(N_sim)])#Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
-            t_m.append(i*delta_t)
-            #Collapse system acording to meter
-            a[:,i+1] =  cplus_VN(X[:,i],g, a[:,i],b[:,i]) 
-            b[:,i+1] =  cminus_VN(X[:,i],g,a[:,i],b[:,i])#Depends on initial state but next. Can it be complex from time evolution)?
-            
-        else: #No measurement -> no partial collapse of the system in this timestep.
-            a[:,i+1] = a[:,i] #Depends on initial state but next. Can it be complex from time evolution)?
-            b[:,i+1] = b[:,i]
-            m_error[:,i+1] += 1
+        
+            Xmeasure = np.array([np.random.choice(X_span,p=P[i,:]) for i in range(len(idx_m))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
+            [measurements[idx]['X'].append(x) for idx, x in zip(idx_m, Xmeasure)]
+            [measurements[idx]['t'].append(i*delta_t) for idx in idx_m]
+           
 
+            #Collapse system acording to meter for those that did a measurement
+            a[idx_m,i+1] =  cplus_VN(Xmeasure,g, a[idx_m,i],b[idx_m,i]) 
+            b[idx_m,i+1] =  cminus_VN(Xmeasure,g,a[idx_m,i],b[idx_m,i]) #Depends on initial state but next. Can it be complex from time evolution)?
+
+            # No measurement -> no partial collapse of the system in this timestep.
+            a[idx_nm,i+1] = a[idx_nm,i] #Depends on initial state but next. Can it be complex from time evolution)?
+            b[idx_nm,i+1] = b[idx_nm,i]
+            #m_error[idx_nm,i+1] += 1
+        else: # Don't think you will ever end here - no measurements on all the simulations/trajecotries
+            a[:,i+1] = cplus_H(a[:,i],U_s)
+            b[:,i+1] = cminus_H(b[:,i],U_s)
+            #m_error[:,i+1] += 1
+            
         #Evovle system thorught system hamilton                                                                                                                                                                                                                                                                                                     
         a[:,i+1] = (U_s@np.array([1,0]))[0]*a[:,i]
         b[:,i+1] = (U_s@np.array([0,1]))[1]*b[:,i]
-    return X,t_m,a,b,m_error
+    
+    # order measurement to a np.array
+    for i in range(N_sim):
+        measurements[i]['X'] = np.array(measurements[i]['X'])
+        measurements[i]['t'] = np.array(measurements[i]['t'])
+    
+
+    breakpoint()
+    return measurements, a, b
 
 #Compare epsilon with delta t (rabi oscilation and measurement) Plot t_rabi>>t_95, t_rabi approx t_95 and t_rabi<<t_95
 
@@ -127,4 +150,4 @@ def Xeuler_event(tstop=tstop,N0=N0): #Let's start with constant rate!
 
 if __name__ == '__main__':
     print('hej')
-    print(Xeuler_sim(10, 5, 0.3, np.array([[1,0],[0,-1]]), a0=1/np.sqrt(2)))
+    print(Xeuler_sim(10, 5, 0.3, np.array([[1,0],[0,-1]]), a0=1/np.sqrt(2), b0=None, r=15., delta_t=0.05, seed = 1))
