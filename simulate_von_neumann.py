@@ -7,7 +7,7 @@ def phi(x,sig=1):
 
 def p(x,g,a,b): #probability of measurement outcome x at state a,b
     if np.isscalar(a):
-        return  (abs(a)**2) * (phi(x-g)**2) + (abs(b)**2) * (phi(x+g)**2)#=
+        return  (abs(a)**2) * (phi(x-g)**2) + (abs(b)**2) * (phi(x+g)**2)
     elif len(x) != len(a):
         # shape (N_sim, len(x))
         return abs(a[:,None])**2 * (phi(x-g)[None,:])**2  + abs(b[:,None])**2 * (phi(x + g)[None,:])**2 
@@ -29,7 +29,7 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
     return b * phi(x + g) / np.sqrt(p(x, g, a, b))
 
 
-def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, seed = None):#
+def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=0.05, seed = None, verbose = False):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
@@ -52,6 +52,9 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
 
     if b0 is None:
         b0 = np.sqrt(1 - abs(a0)**2) # this can include a complex phase too!
+    
+    if r is None:
+        r = 1/delta_t
         
     assert abs(a0)**2 + abs(b0)**2 == 1, 'Initial state coefficients do not sum to 1'
 
@@ -75,12 +78,14 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
     #m_error[:,0] = np.repeat(0,N_sim) #Times for trajectory n to not do a measurement. 
     
     p_succes = r*delta_t
+    if verbose:
+        print('p_succes:', p_succes)
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
     for i in range(N):#creating N_sim number of quantum trajectory in parallel 
         k = np.random.uniform(0,1, size=N_sim) 
         #Include sucess rate measurement or not! Remove measurement vs remove measurement record
         
-        if any(k<p_succes):#Measurement is done
+        if any(k<p_succes): #Measurement is done on any trajectories
             # Keep idx of those simulations that did a measurement
             idx_m = np.where(k<p_succes)[0] #Index of measurements
             idx_nm = np.where(k>=p_succes)[0] #Index of no measurements
@@ -89,9 +94,12 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
             P = p(X_span,g,a[:,i],b[:,i]) 
             P = P/P.sum(axis=1)[:,None]
         
-            Xmeasure = np.array([np.random.choice(X_span,p=P[i,:]) for i in range(len(idx_m))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
-            [measurements[idx]['X'].append(x) for idx, x in zip(idx_m, Xmeasure)]
-            [measurements[idx]['t'].append(i*delta_t) for idx in idx_m]
+            # make and save measurement
+            Xmeasure = np.array([np.random.choice(X_span,p=P[idx,:]) for idx in range(len(idx_m))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
+            for j, idx in enumerate(idx_m):
+                measurements[idx]['X'].append(Xmeasure[j])
+                measurements[idx]['t'].append(i*delta_t)
+
            
 
             #Collapse system acording to meter for those that did a measurement
@@ -102,14 +110,14 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
             a[idx_nm,i+1] = a[idx_nm,i] #Depends on initial state but next. Can it be complex from time evolution)?
             b[idx_nm,i+1] = b[idx_nm,i]
             #m_error[idx_nm,i+1] += 1
-        else: # Don't think you will ever end here - no measurements on all the simulations/trajecotries
-            a[:,i+1] = cplus_H(a[:,i],U_s)
-            b[:,i+1] = cminus_H(b[:,i],U_s)
+        else: # When there is no measurements at any trajectories
+            a[:,i+1] =  a[:,i]#cplus_H(a[:,i],U_s)
+            b[:,i+1] = b[:,i]#cminus_H(b[:,i],U_s)
             #m_error[:,i+1] += 1
             
         #Evovle system thorught system hamilton                                                                                                                                                                                                                                                                                                     
-        a[:,i+1] = (U_s@np.array([1,0]))[0]*a[:,i]
-        b[:,i+1] = (U_s@np.array([0,1]))[1]*b[:,i]
+        #a[:,i+1] = (U_s@np.array([1,0]))[0]*a[:,i]
+        #b[:,i+1] = (U_s@np.array([0,1]))[1]*b[:,i]
     
     # order measurement to a np.array
     for i in range(N_sim):
@@ -117,7 +125,6 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=0, delta_t=0.05, see
         measurements[i]['t'] = np.array(measurements[i]['t'])
     
 
-    breakpoint()
     return measurements, a, b
 
 #Compare epsilon with delta t (rabi oscilation and measurement) Plot t_rabi>>t_95, t_rabi approx t_95 and t_rabi<<t_95
@@ -150,4 +157,10 @@ def Xeuler_event(tstop=tstop,N0=N0): #Let's start with constant rate!
 
 if __name__ == '__main__':
     print('hej')
-    print(Xeuler_sim(10, 5, 0.3, np.array([[1,0],[0,-1]]), a0=1/np.sqrt(2), b0=None, r=15., delta_t=0.05, seed = 1))
+    measurements, a, b = Xeuler_sim(10, 5, 0.3, np.array([[1,0],[0,-1]]), a0=1/np.sqrt(2), b0=None, r=15., delta_t=0.05, seed = 1)
+    
+    print(f"Measurements lenght: {len(measurements)}")
+    print(f"First measurements: {measurements[0]}")
+    print(f"a shape: {a.shape}")
+    print(f"b shape: {b.shape}")
+    

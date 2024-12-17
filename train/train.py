@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 
 def train_model(model, train_loader, val_loader, m, epochs, loss_fn, optimizer, device, steady_state = True, verbose=True):
     '''
@@ -25,15 +26,20 @@ def train_model(model, train_loader, val_loader, m, epochs, loss_fn, optimizer, 
         model.train()
         train_loss = 0
         train_acc = 0
-        for X, y, a,b  in train_loader:
-            X, y = X.to(device), y.to(device)
+        for X, t, a,b  in train_loader:
+            X, t = X.to(device), t.to(device)
             X = X[:,:, :m] # keep first m measurements
+
 
             # Model prediction, loss and optimization
             optimizer.zero_grad()
             pred = model(X)
            
             if steady_state:
+                # label
+                y = (abs(a[:,m])**2 > abs(b[:,m])**2).long() #torch.tensor(a[:,m]**2,  b[:,m]**2).long()
+        
+                print(y.shape, pred.shape)
                 loss = loss_fn(pred, y)
             else:
                 a = a[:,1:] # remove a0
