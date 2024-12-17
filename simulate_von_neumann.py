@@ -14,22 +14,22 @@ def p(x,g,a,b): #probability of measurement outcome x at state a,b
     else: # case N_sim = len(x)
         return abs(a)**2 * (phi(x-g))**2  + abs(b)**2 * (phi(x + g))**2
 
-#Perhaps better to just write up the hamilton???
-def cplus_H(a,H):
-    return H@np.array([1,0])*a
+#Both unitaries are written in the 0/1 basis (just like the rest)
+def U_z(epsilon, t):
+    return np.array([[np.exp(-1j*epsilon*t),0],[0,np.exp(1j*epsilon*t)]])
 
-def cminus_H(b,H):
-    return  H@np.array([0,1])*b
+def U_x(epsilon, t):
+    return np.array([[np.cos(epsilon*t),-1j*np.sin(epsilon*t)],
+                     [-1j*np.sin(epsilon*t),np.cos(epsilon*t)]])
 
 def cplus_VN(x,g, a,b):#coeficent of plus state post single measurement
     return a * phi(x - g) / np.sqrt(p(x, g, a, b))
-
 
 def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
     return b * phi(x + g) / np.sqrt(p(x, g, a, b))
 
 
-def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=0.05, seed = None, verbose = False):#
+def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1, seed = None,verbose=False):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
@@ -110,14 +110,14 @@ def Xeuler_sim(N_sim, N, g, U_s, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=0.05, 
             a[idx_nm,i+1] = a[idx_nm,i] #Depends on initial state but next. Can it be complex from time evolution)?
             b[idx_nm,i+1] = b[idx_nm,i]
             #m_error[idx_nm,i+1] += 1
-        else: # When there is no measurements at any trajectories
-            a[:,i+1] =  a[:,i]#cplus_H(a[:,i],U_s)
-            b[:,i+1] = b[:,i]#cminus_H(b[:,i],U_s)
+        else: # Don't think you will ever end here - no measurements on all the simulations/trajecotries
+            a[:,i+1] = a[:,i]
+            b[:,i+1] = b[:,i]
             #m_error[:,i+1] += 1
             
         #Evovle system thorught system hamilton                                                                                                                                                                                                                                                                                                     
-        #a[:,i+1] = (U_s@np.array([1,0]))[0]*a[:,i]
-        #b[:,i+1] = (U_s@np.array([0,1]))[1]*b[:,i]
+        a[:,i+1] = (U_x(epsilon, delta_t)@np.array([a[:,i+1],b[:,i+1]]))[0]
+        b[:,i+1] = (U_x(epsilon, delta_t)@np.array([a[:,i+1],b[:,i+1]]))[1]
     
     # order measurement to a np.array
     for i in range(N_sim):
