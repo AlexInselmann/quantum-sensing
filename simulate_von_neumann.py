@@ -29,7 +29,7 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
     return b * phi(x + g) / np.sqrt(p(x, g, a, b))
 
 
-def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1, seed = None,verbose=False):#
+def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None delta_t=1, seed = None,verbose=False):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
@@ -53,8 +53,11 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1,
     if b0 is None:
         b0 = np.sqrt(1 - abs(a0)**2) # this can include a complex phase too!
     
-    if r is None:
-        r = 1/delta_t
+    if rm is None:
+        rm = 1/delta_t
+
+    if rd is None:
+        rd = 1-rm
         
     assert abs(a0)**2 + abs(b0)**2 == 1, 'Initial state coefficients do not sum to 1'
 
@@ -68,8 +71,8 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1,
 
     
     #X = np.zeros((N_sim, N)) #spot to plug in new position, one less measurement than states (starts and ends with states
-    a = np.zeros((N_sim, N+1),dtype=np.complex64) #coeficitent in plus state
-    b = np.zeros((N_sim, N+1),dtype=np.complex64) #coeficitent in minus state
+    a = np.zeros((N_sim, N+1),dtype=np.complex128) #coeficitent in plus state
+    b = np.zeros((N_sim, N+1),dtype=np.complex128) #coeficitent in minus state
     #m_error = np.zeros((N_sim, N+1)) #Keep track when there is not performed a measurement
 
     #Initial conditions
@@ -77,18 +80,21 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1,
     b[:,0] = np.repeat(b0,N_sim)
     #m_error[:,0] = np.repeat(0,N_sim) #Times for trajectory n to not do a measurement. 
     
-    p_succes = r*delta_t
-    if verbose:
-        print('p_succes:', p_succes)
+    pm_succes = rm*delta_t
+    pd_succes = rd*delta_t
+    ptot_succes = pd_succes + pm_succes
+    if verbose: #ALEX not sure if you still need this?
+        print('pm_succes:', pm_succes)
+
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
     for i in range(N):#creating N_sim number of quantum trajectory in parallel 
         k = np.random.uniform(0,1, size=N_sim) 
         #Include sucess rate measurement or not! Remove measurement vs remove measurement record
         
-        if any(k<p_succes): #Measurement is done on any trajectories
+        if any(k<pm_succes): #Fraction with sucess measurement
             # Keep idx of those simulations that did a measurement
-            idx_m = np.where(k<p_succes)[0] #Index of measurements
-            idx_nm = np.where(k>=p_succes)[0] #Index of no measurements
+            idx_m = np.where(k<pm_succes)[0] #Index of measurements
+            idx_nm = np.where(k>=pm_succes)[0] #Index of no measurements
 
             #Measure meter at time t_m
             P = p(X_span,g,a[:,i],b[:,i]) 
@@ -100,20 +106,38 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,r=None, delta_t=1,
                 measurements[idx]['X'].append(Xmeasure[j])
                 measurements[idx]['t'].append(i*delta_t)
 
-           
-
             #Collapse system acording to meter for those that did a measurement
             a[idx_m,i+1] =  cplus_VN(Xmeasure,g, a[idx_m,i],b[idx_m,i]) 
-            b[idx_m,i+1] =  cminus_VN(Xmeasure,g,a[idx_m,i],b[idx_m,i]) #Depends on initial state but next. Can it be complex from time evolution)?
+            b[idx_m,i+1] =  cminus_VN(Xmeasure,g,a[idx_m,i],b[idx_m,i]) 
 
             # No measurement -> no partial collapse of the system in this timestep.
-            a[idx_nm,i+1] = a[idx_nm,i] #Depends on initial state but next. Can it be complex from time evolution)?
+            a[idx_nm,i+1] = a[idx_nm,i] 
             b[idx_nm,i+1] = b[idx_nm,i]
             #m_error[idx_nm,i+1] += 1
-        else: # Don't think you will ever end here - no measurements on all the simulations/trajecotries
+        elif any(pm_succes<k<ptot_succes): #Fraction with sucess detection
+            # Keep idx of those simulations that did a measurement
+            idx_d = np.where(k<pd_succes)[0] #Index of detection
+            #No need to index of no detection, since nothing happens for them.
+
+            #Measure meter at time t_m
+            P = p(X_span,g,a[:,i],b[:,i]) 
+            P = P/P.sum(axis=1)[:,None]
+        
+            # make and save measurement
+            Xmeasure = np.array([np.random.choice(X_span,p=P[idx,:]) for idx in range(len(idx_d))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
+            for j, idx in enumerate(idx_d):
+                measurements[idx]['X'].append(Xmeasure[j])
+                measurements[idx]['t'].append(i*delta_t)
+
+            #Collapse system acording to meter for all events
+            a[:,i+1] =  cplus_VN(Xmeasure,g, a[idx_d,i],b[idx_d,i]) 
+            b[:,i+1] =  cminus_VN(Xmeasure,g,a[idx_d,i],b[idx_d,i]) 
+
+            # No detection -> do not save measurement.
+
+        else: # Don't think you will ever end here - no measurements (or record) on any of simulations/trajecotries
             a[:,i+1] = a[:,i]
             b[:,i+1] = b[:,i]
-            #m_error[:,i+1] += 1
             
         #Evovle system thorught system hamilton                                                                                                                                                                                                                                                                                                     
         a[:,i+1] = (U_x(epsilon, delta_t)@np.array([a[:,i+1],b[:,i+1]]))[0]
