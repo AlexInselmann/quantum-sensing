@@ -29,7 +29,7 @@ def cminus_VN(x,g,a,b): #coeficent of minus state post single measurement
     return b * phi(x + g) / np.sqrt(p(x, g, a, b))
 
 
-def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None delta_t=1, seed = None,verbose=False):#
+def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None, delta_t=1, seed = None,verbose=False):#
     '''
     Random walk with fixed step size, in a neaumann system. Can run multiple simulations at once.
 
