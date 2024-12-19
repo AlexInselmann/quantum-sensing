@@ -49,7 +49,11 @@ class VGG(nn.Module):
             #nn.Dropout(),
             nn.Linear(512, num_classes),
         )
-        self.sm = nn.Softmax(dim=1)
+        if num_classes > 1:
+            self.sm = nn.Softmax(dim=1)
+        else:
+            self.sm = nn.Sigmoid()
+            
         self._initialize_weights()
 
     def forward(self, x):
@@ -57,7 +61,7 @@ class VGG(nn.Module):
         x = self.pool(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        #x = self.sm(x)
+        x = self.sm(x)
         return x
 
     def _initialize_weights(self):

@@ -9,7 +9,7 @@ from simulate_von_neumann import Xeuler_sim
 
 # 
 
-def create_datasets_sim(N_data: int, data_split: float, N: int, g: float,U_s: np.ndarray, a0: float=1/np.sqrt(2), b0=None, delta_t: float = 0.05,r: int =  None,  meter_error = None, verbose = False):
+def create_datasets_sim(N_data: int, data_split: float, N: int, g: float,epsilon:float, a0: float=1/np.sqrt(2), b0=None, delta_t: float = 0.05,rm: float =  None,rd: float =  None,  meter_error = None, seed = None, verbose = False):
     '''
     Create val and train dataloaders with Von Neumann simulation data. Keep m measurements per simulation. If you need test data set data_split to 1
 
@@ -31,11 +31,13 @@ def create_datasets_sim(N_data: int, data_split: float, N: int, g: float,U_s: np
     '''
     assert data_split <= 1 and data_split > 0, 'data_split must be between 0 and 1'
 
+    if seed is not None:
+        np.random.seed(seed)
 
-    measurements, a, b = Xeuler_sim(N_sim = N_data,N = N, g = g,U_s = U_s,a0= a0,b0= b0,delta_t=delta_t, r=r, verbose=verbose)
-    #X = np.array([m['X'] for m in measurements])
-    a = torch.tensor(a).float()
-    b = torch.tensor(b).float()
+    measurements, a, b = Xeuler_sim(N_sim = N_data,N = N, g = g, epsilon=epsilon, a0= a0,b0= b0,delta_t=delta_t, rm=rm, rd=rd, seed = seed, verbose=verbose)
+
+    a = torch.tensor(a)#.float()
+    b = torch.tensor(b)#.float()
 
     # unpack measurements
     X = [m['X'] for m in measurements]
