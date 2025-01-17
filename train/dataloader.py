@@ -44,7 +44,7 @@ def create_datasets_sim(N_data: int, data_split: float, N: int, g: float,epsilon
     t = [m['t'] for m in measurements]
 
     # zero pad measurements
-    max_length = max([len(x) for x in X])
+    max_length = 100#max([len(x) for x in X])
     min_length = min([len(x) for x in X])
     if verbose:
         print('Max length:', max_length)

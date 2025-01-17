@@ -39,7 +39,8 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None, d
     g: interaction strength
     a0: initial state coefficient plus
     b0: initial state coefficient minus
-    r: successrate for a measurement to happen.
+    rm: errorrate for a measurement to happen.
+    rd: errorrate for a detection to happen.
 
     Output:
     X: array with the particle position measurement at different time steps - measurement record.
@@ -54,10 +55,10 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None, d
         b0 = np.sqrt(1 - abs(a0)**2) # this can include a complex phase too!
     
     if rm is None:
-        rm = 1/delta_t
+        rm = 0
 
     if rd is None:
-        rd = 1-rm
+        rd = 0
         
     assert abs(a0)**2 + abs(b0)**2 == 1, 'Initial state coefficients do not sum to 1'
 
@@ -80,64 +81,63 @@ def Xeuler_sim(N_sim, N, g, epsilon, a0=1/np.sqrt(2) ,b0=None,rm=None,rd=None, d
     b[:,0] = np.repeat(b0,N_sim)
     #m_error[:,0] = np.repeat(0,N_sim) #Times for trajectory n to not do a measurement. 
     
-    pm_succes = rm*delta_t
-    pd_succes = rd*delta_t
-    ptot_succes = pd_succes + pm_succes
-    if verbose: #ALEX not sure if you still need this?
-        print('pm_succes:', pm_succes)
+    p_merror = rm*delta_t
+    p_derror = rd*delta_t
+    ptot_error = p_derror + p_merror
+    
+    if verbose: 
+        print('measurement error:', p_merror)
+        print('pd_succes:', p_derror)
+        print('ptot_succes:', ptot_error)
+        
+    
+    assert ptot_error >= 0 or ptot_error < 1, 'Error probability exceeds 1 or is negative, not a probability'
 
 #    X[0] = #np.random.choice(X_span,p=p(X_span,gstrong,a[0],b[0])/p(X_span,gstrong,a[0],b[0]).sum()) #First measurement
     for i in range(N):#creating N_sim number of quantum trajectory in parallel 
         k = np.random.uniform(0,1, size=N_sim) 
         #Include sucess rate measurement or not! Remove measurement vs remove measurement record
         
-        if any(k<pm_succes): #Fraction with sucess measurement
-            # Keep idx of those simulations that did a measurement
-            idx_m = np.where(k<pm_succes)[0] #Index of measurements
-            idx_nm = np.where(k>=pm_succes)[0] #Index of no measurements
+        #if any(k < ptot_error): # does any error occur?
+            
+        ## Normal measurements
+        idx_m = np.where(ptot_error < k)[0] # Index of measurements
 
-            #Measure meter at time t_m
-            P = p(X_span,g,a[:,i],b[:,i]) 
-            P = P/P.sum(axis=1)[:,None]
+        #Measure meter at time t_m
+        P = p(X_span,g,a[:,i],b[:,i]) 
+        P = P/P.sum(axis=1)[:,None]
+
         
-            # make and save measurement
-            Xmeasure = np.array([np.random.choice(X_span,p=P[idx,:]) for idx in range(len(idx_m))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
-            for j, idx in enumerate(idx_m):
-                measurements[idx]['X'].append(Xmeasure[j])
-                measurements[idx]['t'].append(i*delta_t)
+        # make and save measurement
+        Xmeasure = np.array([np.random.choice(X_span,p=P[idx,:]) for idx in range(N_sim)]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
+        for j, idx in enumerate(idx_m):
+            measurements[idx]['X'].append(Xmeasure[j])
+            measurements[idx]['t'].append(i*delta_t)
 
-            #Collapse system acording to meter for those that did a measurement
-            a[idx_m,i+1] =  cplus_VN(Xmeasure,g, a[idx_m,i],b[idx_m,i]) 
-            b[idx_m,i+1] =  cminus_VN(Xmeasure,g,a[idx_m,i],b[idx_m,i]) 
+        #Collapse system acording to meter for those that did a measurement
+        a[idx_m,i+1] =  cplus_VN(Xmeasure[idx_m],g, a[idx_m,i],b[idx_m,i]) 
+        b[idx_m,i+1] =  cminus_VN(Xmeasure[idx_m],g,a[idx_m,i],b[idx_m,i]) 
 
-            # No measurement -> no partial collapse of the system in this timestep.
-            a[idx_nm,i+1] = a[idx_nm,i] 
-            b[idx_nm,i+1] = b[idx_nm,i]
-            #m_error[idx_nm,i+1] += 1
-        elif any(pm_succes<k<ptot_succes): #Fraction with sucess detection
-            # Keep idx of those simulations that did a measurement
-            idx_d = np.where(k<pd_succes)[0] #Index of detection
-            #No need to index of no detection, since nothing happens for them.
+        if  any(k < p_merror):   
+            ## Measurement errors -> no measurement and the state is the same as before
+            idx_merror = np.where(k < p_merror)[0]   # Index of measurements errors
 
-            #Measure meter at time t_m
-            P = p(X_span,g,a[:,i],b[:,i]) 
-            P = P/P.sum(axis=1)[:,None]
+            for idx in idx_merror:
+                a[idx,i+1] = a[idx,i]
+                b[idx,i+1] = b[idx,i]
+
+            a[idx_merror,i+1] = a[idx_merror,i] 
+            b[idx_merror,i+1] = b[idx_merror,i]
+
+        if any(np.logical_and(p_merror < k,k < ptot_error)):
+            ## Detection errors  -> do not save measurement, but state changes
+            idx_derror = np.where(np.logical_and(p_merror < k,k < ptot_error))[0]  # Index of detection errors    
+            
+            # No detection error
+            a[idx_derror,i+1] =  cplus_VN(Xmeasure[idx_derror],g, a[idx_derror,i],b[idx_derror,i]) 
+            b[idx_derror,i+1] =  cminus_VN(Xmeasure[idx_derror],g,a[idx_derror,i],b[idx_derror,i]) 
         
-            # make and save measurement
-            Xmeasure = np.array([np.random.choice(X_span,p=P[idx,:]) for idx in range(len(idx_d))]) #Collect position measurement from the previus state, do not depend directly on the prevues position measurement!
-            for j, idx in enumerate(idx_d):
-                measurements[idx]['X'].append(Xmeasure[j])
-                measurements[idx]['t'].append(i*delta_t)
-
-            #Collapse system acording to meter for all events
-            a[:,i+1] =  cplus_VN(Xmeasure,g, a[idx_d,i],b[idx_d,i]) 
-            b[:,i+1] =  cminus_VN(Xmeasure,g,a[idx_d,i],b[idx_d,i]) 
-
-            # No detection -> do not save measurement.
-
-        else: # Don't think you will ever end here - no measurements (or record) on any of simulations/trajecotries
-            a[:,i+1] = a[:,i]
-            b[:,i+1] = b[:,i]
+       
             
         #Evovle system thorught system hamilton                                                                                                                                                                                                                                                                                                     
         a[:,i+1] = (U_x(epsilon, delta_t)@np.array([a[:,i+1],b[:,i+1]]))[0]
